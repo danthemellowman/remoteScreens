@@ -1,0 +1,7 @@
+set solib-search-path /Users/dantheman/src/openFrameworks/apps/remoteScreens/remoteScreensAndroid//obj/local/x86:/Users/dantheman/src/openFrameworks/apps/remoteScreens/remoteScreensAndroid//libs/x86
+set sysroot /Users/dantheman/src/android-ndk-r10e/platforms/android-19/arch-arm/
+directory /Users/dantheman/src/android-ndk-r10e/platforms/android-19/arch-arm/usr/include
+directory /Users/dantheman/src/openFrameworks/apps/remoteScreens/remoteScreensAndroid//src
+directory /Users/dantheman/src/android-ndk-r10e/sources/cxx-stl/system
+directory /Users/dantheman/src/openFrameworks/apps/remoteScreens/remoteScreensAndroid//libs/x86
+
