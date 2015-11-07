@@ -3,6 +3,8 @@
 #include "ofMain.h"
 #include "ofxAndroid.h"
 #include "ofxHTTP.h"
+#include "ofxOsc.h"
+#include "ofxAccelerometer.h"
 class ofApp : public ofxAndroidApp{
 	
 	public:
@@ -36,6 +38,20 @@ class ofApp : public ofxAndroidApp{
 		int one_second_time;
 		int camera_fps;
 		int frames_one_sec;
+		ofPixels* pix;
+		vector<ofImage*> cameraImages;
+		ofImage* image;
+		ofx::HTTP::SimpleIPVideoServer server;
+		ofxOscSender sender;
+		int cameraID;
+		int preCameraID;
+		bool drawConnections;
+		int camWidth, camHeight;
 
-		 ofx::HTTP::SimpleIPVideoServer server;
+		bool cameraChange;
+
+		ofTrueTypeFont font;
+		ofVec3f accel, normAccel;
+		string messages[3];
+
 };
