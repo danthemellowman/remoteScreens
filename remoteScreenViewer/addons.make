@@ -1,0 +1,5 @@
+ofxGui
+ofxOsc
+ofxThreadedImageLoader
+ofxXmlSettings
+ofxIpVideoGrabber

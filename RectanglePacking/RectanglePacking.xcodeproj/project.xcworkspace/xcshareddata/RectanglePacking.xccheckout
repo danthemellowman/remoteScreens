@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>D83EBBC0-C024-4FCB-8AC6-1B19E576AB40</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>C1AE88B373AABC75F5BF3D90C8821D8D8447CA59</key>
+		<string>https://github.com/bakercp/ofxRectangleUtils.git</string>
+	</dict>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>C1AE88B373AABC75F5BF3D90C8821D8D8447CA59</key>
+		<string>ofxRectangleUtils/</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/bakercp/ofxRectangleUtils.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>C1AE88B373AABC75F5BF3D90C8821D8D8447CA59</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>C1AE88B373AABC75F5BF3D90C8821D8D8447CA59</string>
+			<key>IDESourceControlWCCName</key>
+			<string>ofxRectangleUtils</string>
+		</dict>
+	</array>
+</dict>
+</plist>
