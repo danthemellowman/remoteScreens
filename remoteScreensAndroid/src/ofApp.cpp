@@ -34,6 +34,7 @@ void ofApp::setup(){
 	image->allocate(camWidth, camHeight, OF_IMAGE_COLOR);
 
 
+
 	drawConnections = false;
 }
 
@@ -85,30 +86,9 @@ void ofApp::draw(){
 		}
 		ofPopMatrix();
 	}else{
-		ofSetColor(255, 0, 255);
+		ofSetColor(0, 0, 0);
 		ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
 	}
-
-	ofDrawBitmapStringHighlight("FPS "+ofToString(ofGetFrameRate()), 10, 10);
-
-	ofSetColor(255,255,0);
-	font.drawString(messages[0],10,font.stringHeight(messages[0])+30);
-	ofSetColor(255,0,255);
-	font.drawString(messages[1],10,(font.stringHeight(messages[0])+30)*2);
-	ofSetColor(0,255,255);
-	font.drawString(messages[2],10,(font.stringHeight(messages[0])+30)*3);
-
-	ofPushMatrix();
-	ofTranslate(ofGetWidth()/2, ofGetHeight()/2);
-
-	ofSetColor(255,255,0);
-	ofDrawLine(0,0,normAccel.x*ofGetWidth()/2,0);
-	ofSetColor(255,0,255);
-	ofDrawLine(0,0,0,-normAccel.y*ofGetHeight()/2);
-	// we don't draw z as the perspective might be confusing
-	// but it's approximately one when the device is still and parallel
-	// to the ground
-	ofPopMatrix();
 }
 
 //--------------------------------------------------------------
