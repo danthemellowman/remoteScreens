@@ -6,6 +6,7 @@
   "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
     "9D7DF0CF1987518FD068E56403FB4AE6D5CA45C2" : 0,
     "F4CCB893AFADB97238A965FD2F28717F1CAAE613" : 0,
+    "6B5D1DE462D521A98972DF70F1147E20268C546A" : 0,
     "2DE9C8846D9375EAACFABA8963120E8E7719BAF5" : 0,
     "AECFBD561E27AA75142CC3760E6EF1774F14CD24" : 0,
     "C1AE88B373AABC75F5BF3D90C8821D8D8447CA59" : 0
@@ -14,6 +15,7 @@
   "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
     "9D7DF0CF1987518FD068E56403FB4AE6D5CA45C2" : "remoteScreens\/",
     "F4CCB893AFADB97238A965FD2F28717F1CAAE613" : "..\/addons\/ofxSyphon",
+    "6B5D1DE462D521A98972DF70F1147E20268C546A" : "..\/addons\/ofxTween",
     "2DE9C8846D9375EAACFABA8963120E8E7719BAF5" : "..",
     "AECFBD561E27AA75142CC3760E6EF1774F14CD24" : "..\/addons\/ofxIpVideoGrabber",
     "C1AE88B373AABC75F5BF3D90C8821D8D8447CA59" : "..\/addons\/ofxRectangleUtils"
@@ -26,6 +28,11 @@
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/openframeworks\/openFrameworks.git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "2DE9C8846D9375EAACFABA8963120E8E7719BAF5"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/arturoc\/ofxTween.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "6B5D1DE462D521A98972DF70F1147E20268C546A"
     },
     {
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/danthemellowman\/remoteScreens.git",

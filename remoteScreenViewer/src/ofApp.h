@@ -29,6 +29,8 @@
 #include "ofxRectangleUtils.h"
 #include "ofxRectangle.h"
 #include "ofxGui.h"
+#include "ofxTween.h"
+#include "IPVideoGrabber.h"
 
 class ColoredRectangle : public ofRectangle{
 public:
@@ -44,6 +46,50 @@ public:
     ofColor color;
     string uuid;
 };
+
+class IPCameraDef
+{
+public:
+    IPCameraDef()
+    {
+    }
+    
+    IPCameraDef(const std::string& url): _url(url)
+    {
+    }
+    
+    IPCameraDef(const std::string& name,
+                const std::string& url,
+                const std::string& username,
+                const std::string& password):
+    _name(name),
+    _url(url),
+    _username(username),
+    _password(password)
+    {
+    }
+    
+    void setName(const std::string& name) { _name = name; }
+    std::string getName() const { return _name; }
+    
+    void setURL(const std::string& url) { _url = url; }
+    std::string getURL() const { return _url; }
+    
+    void setUsername(const std::string& username) { _username = username; }
+    std::string getUsername() const { return _username; }
+    
+    void setPassword(const std::string& password) { _password = password; }
+    std::string getPassword() const { return _password; }
+    
+    
+private:
+    std::string _name;
+    std::string _url;
+    std::string _username;
+    std::string _password;
+};
+
+using namespace ofx;
 
 
 class ofApp : public ofBaseApp {
@@ -61,8 +107,19 @@ public:
 
 	void reCreateRects();
 	void packAll(float padding);
-
+    
+    IPCameraDef& getNextCamera();
+    void newCamera(string name, string ip);
+    void loadCameras();
+    void videoResized(const void* sender, ofResizeEventArgs& arg);
+    std::vector<std::shared_ptr<Video::IPVideoGrabber>> grabbers;
+    std::vector<IPCameraDef> ipcams; // a list of IPCameras
+    int nextCamera;
+    
+    
     bool bTogglerectangles;
+  
+
 
 	vector<ofRectanglePacker*> packer;
     map<string, ColoredRectangle*> targetRectMap;
@@ -75,16 +132,41 @@ public:
     vector< vector<ColoredRectangle*> > rectsPerFbo;
 
     
+    vector<ofxTween> tweeners;
+    
+    
+    ofxEasingBounce easeBounce;
+    ofxEasingCubic easeCubic;
+    ofxEasingElastic easeElastic;
+    ofxEasingLinear easeLinear;
+    ofxEasingQuart easeQuart;
+    ofxEasingBack easeBack;
+    ofxEasingCirc easeCirc;
+    ofxEasingExpo easeExpo;
+    ofxEasingQuad easeQuad;
+    ofxEasingQuint easeQuint;
+    ofxEasingSine easeSine;
+    
+    float clamp;
+    ofxTween::ofxEasingType easingType;
+    string easestring;
+
+    
+    
 	int padding;
     
     ofxPanel panel;
     ofParameterGroup lerps;
     ofParameter<float> rectLerp;
     ofParameter<float> targetLerp;
+    ofParameter<float> scaleOutputMin, scaleOutputMax;
+    ofParameter<bool> debugView;
     int numExpanded;
     int numRects;
     float fboWidth;
     float fboHeight;
     float textureHeight;
     float textureWidth;
+    
+    ofFbo fbo;
 };

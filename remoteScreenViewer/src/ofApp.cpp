@@ -5,6 +5,8 @@
 void ofApp::setup(){
     ofSetVerticalSync(true);
     ofSetFrameRate(60);
+    //    ofEnableSmoothing();
+    //    ofEnableAntiAliasing();
     
     numRects =6;
     fboWidth = 1024;
@@ -14,13 +16,81 @@ void ofApp::setup(){
     reCreateRects();
     
     
+    
     lerps.add(rectLerp.set("R-Lerp", 0.9, 0.001, 1.0));
     lerps.add(targetLerp.set("T-Lerp", 0.1, 0.001, 1.0));
+    lerps.add(scaleOutputMin.set("Scale Min", 0.5, 0.001, 1.0));
+    lerps.add(scaleOutputMax.set("Scale Max", 0.5, 0.001, 1.0));
+    lerps.add(debugView.set("debugView",false));
     panel.setup(lerps);
     panel.loadFromFile("Settings.xml");
     numExpanded = 0;
-    //    ofSetRectMode(OF_RECTMODE_CENTER);
+    
+    ofSetFullscreen(true);
+    loadCameras();
+    fbo.allocate(ofGetScreenWidth(), ofGetScreenHeight(), GL_RGBA32F);
 }
+
+
+
+//------------------------------------------------------------------------------
+IPCameraDef& ofApp::getNextCamera()
+{
+    nextCamera = (nextCamera + 1) % ipcams.size();
+    return ipcams[nextCamera];
+}
+
+
+void ofApp::newCamera(string name, string ip){
+    IPCameraDef def(name, ip, "", "");
+    
+    std::string logMessage = "STREAM LOADED: " + def.getName() +
+    " url: " +  def.getURL() +
+    " username: " + def.getUsername() +
+    " password: " + def.getPassword();
+    
+    ofLogNotice() << logMessage;
+    
+    ipcams.push_back(def);
+    
+    std::shared_ptr<Video::IPVideoGrabber> c = std::make_shared<Video::IPVideoGrabber>();
+    
+    c->setCameraName(def.getName());
+    c->setURI(def.getURL());
+    c->connect(); // connect immediately
+    
+    // if desired, set up a video resize listener
+    ofAddListener(c->videoResized, this, &ofApp::videoResized);
+    
+    grabbers.push_back(c);
+    
+    nextCamera = ipcams.size();
+}
+
+//------------------------------------------------------------------------------
+void ofApp::loadCameras()
+{
+    newCamera("phone1", "http://phone0.wv.cc.cmu.edu:7890/ipvideo");
+    newCamera("phone2", "http://phone1.wv.cc.cmu.edu:7890/ipvideo");
+}
+
+//------------------------------------------------------------------------------
+void ofApp::videoResized(const void* sender, ofResizeEventArgs& arg)
+{
+    // find the camera that sent the resize event changed
+    for(std::size_t i = 0; i < grabbers.size(); i++)
+    {
+        if(sender == &grabbers[i])
+        {
+            std::stringstream ss;
+            ss << "videoResized: ";
+            ss << "Camera connected to: " << grabbers[i]->getURI() + " ";
+            ss << "New DIM = " << arg.width << "/" << arg.height;
+            ofLogVerbose("ofApp") << ss.str();
+        }
+    }
+}
+
 
 
 void ofApp::reCreateRects(){
@@ -74,17 +144,17 @@ void ofApp::packAll(float padding){
     packer.push_back(new ofRectanglePacker(bounds, padding));
     rectsPerFbo.resize(1); //add the 1st one
     
-    for (int i = 0; i < rectangles.size(); ++i) {
+    for (int i = rects.size()-1; i >=0; --i) {
         bool didFit = false;
         for(int j = 0; j < packer.size() && !didFit; j++){
-            didFit = packer[j]->pack(rectangles[i]->currentRect);
+            didFit = packer[j]->pack( ((ColoredRectangle*)rects[i])->currentRect);
             if(didFit){
-                rectangles[i]->screenOffset = j;
+                ((ColoredRectangle*)rects[i])->screenOffset = j;
             }
             
         }
         if(!didFit){
-            i--;
+            i++;
             packer.push_back(new ofRectanglePacker(bounds, padding));
         }
     }
@@ -98,6 +168,12 @@ void ofApp::packAll(float padding){
 
 
 void ofApp::update(){
+    
+    // update the cameras
+    for(std::size_t i = 0; i < grabbers.size(); i++)
+    {
+        grabbers[i]->update();
+    }
     
     float totalArea = fboWidth*fboHeight;
     int offset = numExpanded<numRects?numExpanded+1:numRects;
@@ -115,6 +191,7 @@ void ofApp::update(){
             rectangles[i]->targetRect = ofRectangle(0, 0, height/1.7, height);
             
         }
+        
         rectangles[i]->currentRect.set(targetRects[i]->currentRect.x, targetRects[i]->currentRect.y, ofLerp(rectangles[i]->currentRect.width, rectangles[i]->targetRect.width, rectLerp), ofLerp(rectangles[i]->currentRect.height, rectangles[i]->targetRect.height, rectLerp));
         rectangles[i]->set(rectangles[i]->currentRect);
         
@@ -124,7 +201,7 @@ void ofApp::update(){
     
     
     
-    packAll(4);
+    packAll(0);
     
     ofx::RectangleUtils::sortByHeight(rects);
     
@@ -150,43 +227,64 @@ void ofApp::draw(){
     
     ofBackground(0);
     ofSetColor(255);
-    ofEnableAlphaBlending();
-
-    ofNoFill();
+    
+    fbo.begin();
+    ofClear(0, 0, 0, 0);
     ofPushMatrix();
     {
-        ofTranslate(ofGetWidth()/2, ofGetHeight()/2);
-        ofScale(0.5, 0.5);
-        for(int i = 0; i < 4; i++){
+        ofTranslate(fbo.getWidth()/2, fbo.getHeight()/2);
+        ofScale(ofMap(numExpanded, 0, numRects, scaleOutputMin, scaleOutputMax), ofMap(numExpanded, 0, numRects, scaleOutputMin, scaleOutputMax));
+        for(int j = 0; j < 4; j++){
             ofPushMatrix();
             {
-                if(i == 1){
+                if(j == 1){
                     ofRotateX(180);
                 }
-                if(i == 2){
+                if(j == 2){
                     ofRotateX(180);
                     ofRotateY(180);
                 }
-                if(i == 3){
+                if(j == 3){
                     ofRotateX(180);
                     ofRotateY(180);
                     ofRotateX(180);
                 }
                 
                 //                ofRotateZ(90*i);
-                
+                int fooCamera = 0;
                 for (int i = rects.size()-1; i>=0; i--){
+                    if(i%2==0)fooCamera = 1;
+                    else fooCamera = 0;
                     ColoredRectangle & rect = *targetRectMap[((ColoredRectangle*)rects[i])->uuid];
-                    if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
-                    else ofSetColor(255, 255, 0, 255);
-                    ofNoFill();
-                    ofPushMatrix();
                     
-                    ofDrawRectangle(rect.currentRect);
-                    if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 100);
-                    else ofSetColor(255, 255, 0, 100);
-                    ofFill();
-                    ofDrawRectangle(rect.currentRect);
+                    ofPushMatrix();
+                    {
+                        ofSetColor(255, 255, 255, 255);
+                        ofFill();
+                        ofTranslate(rect.currentRect.x, rect.currentRect.y);
+                        ofPushMatrix();
+                        {
+                            ofRotate(90);
+                            
+                            ofTranslate(rect.currentRect.getHeight()/2, -rect.currentRect.getWidth()/2);
+                            if(j==0 || j == 3){
+                                grabbers[fooCamera]->draw(rect.currentRect.getHeight()/2,-rect.currentRect.getWidth()/2, -rect.currentRect.getHeight(), rect.currentRect.getWidth());
+                            }
+                            if(j == 1 || j == 2){
+                                
+                                grabbers[fooCamera]->draw(-rect.currentRect.getHeight()/2,-rect.currentRect.getWidth()/2, rect.currentRect.getHeight(), rect.currentRect.getWidth());
+                                
+                            }
+                            
+                        }
+                        ofPopMatrix();
+                        if(debugView){
+                            ofNoFill();
+                            if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
+                            else ofSetColor(255, 255, 0, 255);
+                            ofDrawRectangle(0,0,rect.currentRect.width, rect.currentRect.height);
+                        }
+                    }
                     ofPopMatrix();
                 }
                 
@@ -197,34 +295,33 @@ void ofApp::draw(){
         }
     }
     ofPopMatrix();
-    ofDisableAlphaBlending();
-    ofFill();
-    ofSetColor(255, 255, 255, 255);
+    fbo.end();
     
+    fbo.draw(0, 0);
     
-    ofEnableAlphaBlending();
-    ofSetColor(0, 0, 0, 200);
-    ofPushMatrix();
-    ofScale(0.1, 0.1);
-    ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
-    for (int i = rects.size()-1; i>=0; i--){
-        ColoredRectangle & rect = *targetRectMap[((ColoredRectangle*)rects[i])->uuid];
-        if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
-        else ofSetColor(255, 255, 0, 255);
-        ofNoFill();
+    if(debugView){
+        ofEnableAlphaBlending();
+        ofSetColor(0, 0, 0, 200);
         ofPushMatrix();
-        
-        ofDrawRectangle(rect.currentRect);
-        if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 100);
-        else ofSetColor(255, 255, 0, 100);
-        ofFill();
-        ofDrawRectangle(rect.currentRect);
+        ofScale(0.5, 0.5);
+        for (int i = rects.size()-1; i>=0; i--){
+            ColoredRectangle & rect = *targetRectMap[((ColoredRectangle*)rects[i])->uuid];
+            if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
+            else ofSetColor(255, 255, 0, 255);
+            ofNoFill();
+            ofPushMatrix();
+            
+            ofDrawRectangle(rect.currentRect);
+            if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 100);
+            else ofSetColor(255, 255, 0, 100);
+            ofFill();
+            ofDrawRectangle(rect.currentRect);
+            ofPopMatrix();
+        }
         ofPopMatrix();
+        ofDisableAlphaBlending();
+        ofDrawBitmapStringHighlight(ofToString(ofGetFrameRate(),1), 10, 10);
     }
-    ofPopMatrix();
-    ofDisableAlphaBlending();
-    ofDrawBitmapStringHighlight(ofToString(ofGetFrameRate(),1), 10, 10);
-    
     
     
     panel.draw();
