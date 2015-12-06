@@ -3,6 +3,6 @@
     <string name="app_name">remoteScreensAndroid</string>
     <string name="hello_world">Hello world!</string>
     <string name="menu_settings">Settings</string>
-	<string name="autoboot_package">cc.openframeworks.remoteScreensAndroid</string>
+	<string name="autoboot_package">cc.openframeworks.remotesScreensAndroid</string>
 	<string name="autoboot_activity">OFActivity</string>
 </resources>

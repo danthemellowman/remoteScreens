@@ -1,170 +1,275 @@
-// =============================================================================
-//
-// Copyright (c) 2009-2013 Christopher Baker <http://christopherbaker.net>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
-// =============================================================================
-
-
 #include "ofApp.h"
 
 
-//------------------------------------------------------------------------------
-void ofApp::setup()
-{
-    ofSetLogLevel(OF_LOG_NOTICE);
-    ofSetFrameRate(30);
-    loadCameras();
-    
-    server.setName("Screen");
-}
 
-//------------------------------------------------------------------------------
-IPCameraDef& ofApp::getNextCamera()
-{
-    nextCamera = (nextCamera + 1) % ipcams.size();
-    return ipcams[nextCamera];
-}
-
-
-void ofApp::newCamera(string name, string ip){
-    IPCameraDef def(name, ip, "", "");
+void ofApp::setup(){
+    ofSetVerticalSync(true);
+    ofSetFrameRate(60);
     
-    std::string logMessage = "STREAM LOADED: " + def.getName() +
-    " url: " +  def.getURL() +
-    " username: " + def.getUsername() +
-    " password: " + def.getPassword();
+    numRects =6;
+    fboWidth = 1024;
+    fboHeight = 1024;
+    textureWidth = fboWidth/(numRects/2);
+    textureHeight = textureWidth;
+    reCreateRects();
     
-    ofLogNotice() << logMessage;
     
-    ipcams.push_back(def);
-    
-    SharedIPVideoGrabber c = IPVideoGrabber::makeShared();
-    
-    c->setCameraName(def.getName());
-    c->setURI(def.getURL());
-    c->connect(); // connect immediately
-    
-    // if desired, set up a video resize listener
-    ofAddListener(c->videoResized, this, &ofApp::videoResized);
-    
-    grabbers.push_back(c);
-    
-    nextCamera = ipcams.size();
-}
-
-//------------------------------------------------------------------------------
-void ofApp::loadCameras()
-{
-    newCamera("phone1", "http://128.237.161.251:7890/ipvideo");
-    newCamera("phone2", "http://128.237.198.49:7890/ipvideo");
-}
-
-//------------------------------------------------------------------------------
-void ofApp::videoResized(const void* sender, ofResizeEventArgs& arg)
-{
-    // find the camera that sent the resize event changed
-    for(std::size_t i = 0; i < NUM_CAMERAS; i++)
-    {
-        if(sender == &grabbers[i])
-        {
-            std::stringstream ss;
-            ss << "videoResized: ";
-            ss << "Camera connected to: " << grabbers[i]->getURI() + " ";
-            ss << "New DIM = " << arg.width << "/" << arg.height;
-            ofLogVerbose("ofApp") << ss.str();
-        }
-    }
+    lerps.add(rectLerp.set("R-Lerp", 0.9, 0.001, 1.0));
+    lerps.add(targetLerp.set("T-Lerp", 0.1, 0.001, 1.0));
+    panel.setup(lerps);
+    panel.loadFromFile("Settings.xml");
+    numExpanded = 0;
+    //    ofSetRectMode(OF_RECTMODE_CENTER);
 }
 
 
-//------------------------------------------------------------------------------
-void ofApp::update()
-{
-    // update the cameras
-    for(std::size_t i = 0; i < grabbers.size(); i++)
-    {
-        grabbers[i]->update();
-    }
-}
-
-//------------------------------------------------------------------------------
-void ofApp::draw(){
-    ofBackground(0,0,0);
+void ofApp::reCreateRects(){
     
-    ofSetHexColor(0xffffff);
+    rectangles.clear();
     
-    int row = 0;
-    int col = 0;
-    
-    int x = 0;
+    int x = (fboWidth - floor(fboWidth/textureWidth)*textureWidth)/2;
     int y = 0;
     
-    int w = ofGetWidth() / NUM_COLS;
-    int h = ofGetHeight() / NUM_ROWS;
-
-    
-    for(std::size_t i = 0; i < grabbers.size(); i++)
-    {
-        x = col * w;
-        y = row * h;
+    // create a random set of rectangles to play with
+    rects.resize(numRects);
+    for(int i = 0; i < numRects; ++i){
         
-        // draw in a grid
-        row = (row + 1) % NUM_ROWS;
+        rects[i] = new ColoredRectangle();
+        ((ColoredRectangle*)rects[i])->color = ofColor(ofRandom(32,255), ofRandom(32,255), ofRandom(32,255));
+        ((ColoredRectangle*)rects[i])->aspectRatio = textureWidth/textureHeight;
+        ((ColoredRectangle*)rects[i])->max.set(0, 0, textureWidth*2, textureWidth*2);
+        ((ColoredRectangle*)rects[i])->min.set(0, 0, textureWidth, textureHeight);
+        ((ColoredRectangle*)rects[i])->targetRect = ((ColoredRectangle*)rects[i])->min;
+        ((ColoredRectangle*)rects[i])->currentRect = ((ColoredRectangle*)rects[i])->min;
+        ((ColoredRectangle*)rects[i])->rect = ((ColoredRectangle*)rects[i])->min;
+        ((ColoredRectangle*)rects[i])->alive = true;
+        ((ColoredRectangle*)rects[i])->uuid = ofToString(i);
+        ((ColoredRectangle*)rects[i])->bExpanded = false;
         
-        if(row == 0)
-        {
-            col = (col + 1) % NUM_COLS;
+        x+=textureWidth;
+        if(x+textureWidth >= fboWidth){
+            x = (fboWidth - floor(fboWidth/textureWidth)*textureWidth)/2;
+            y+=textureHeight;
         }
         
+        rectangles.push_back((ColoredRectangle*)rects[i]);
+        targetRects.push_back(new ColoredRectangle());
+        targetRects.back()->uuid = ((ColoredRectangle*)rects[i])->uuid;
+        targetRects.back()->color = ((ColoredRectangle*)rects[i])->color;
+        targetRectMap[targetRects.back()->uuid] = targetRects.back();
+        rectMap[((ColoredRectangle*)rects[i])->uuid] = (ColoredRectangle*)rects[i];
         
+    }
+}
+
+
+void ofApp::packAll(float padding){
+    
+    fbos.clear();
+    rectsPerFbo.clear();
+    
+    //demo packing
+    ofRectangle bounds = ofRectangle(0,0, fboWidth, fboHeight);
+    packer.clear();
+    packer.push_back(new ofRectanglePacker(bounds, padding));
+    rectsPerFbo.resize(1); //add the 1st one
+    
+    for (int i = 0; i < rectangles.size(); ++i) {
+        bool didFit = false;
+        for(int j = 0; j < packer.size() && !didFit; j++){
+            didFit = packer[j]->pack(rectangles[i]->currentRect);
+            if(didFit){
+                rectangles[i]->screenOffset = j;
+            }
+            
+        }
+        if(!didFit){
+            i--;
+            packer.push_back(new ofRectanglePacker(bounds, padding));
+        }
+    }
+    
+    for(int i =0; i < packer.size(); i++){
+        packer.erase(packer.begin()+i);
+        delete packer[i];
+    }
+}
+
+
+
+void ofApp::update(){
+    
+    float totalArea = fboWidth*fboHeight;
+    int offset = numExpanded<numRects?numExpanded+1:numRects;
+    float expandedHeight = floor(sqrt(totalArea/(offset)));
+    float expandedArea = expandedHeight*(expandedHeight/1.7)*(numExpanded==0?0:offset);
+    float height = sqrt((totalArea-expandedArea)/(numRects));
+    
+    
+    for(int i = 0; i < rectangles.size(); i++){
+        if(rectangles[i]->bExpanded){
+            ofRectangle fooRect = ofRectangle(0, 0, expandedHeight/1.7, expandedHeight);
+            rectangles[i]->targetRect = fooRect;
+        }else{
+            
+            rectangles[i]->targetRect = ofRectangle(0, 0, height/1.7, height);
+            
+        }
+        rectangles[i]->currentRect.set(targetRects[i]->currentRect.x, targetRects[i]->currentRect.y, ofLerp(rectangles[i]->currentRect.width, rectangles[i]->targetRect.width, rectLerp), ofLerp(rectangles[i]->currentRect.height, rectangles[i]->targetRect.height, rectLerp));
+        rectangles[i]->set(rectangles[i]->currentRect);
+        
+    }
+    
+    
+    
+    
+    
+    packAll(4);
+    
+    ofx::RectangleUtils::sortByHeight(rects);
+    
+    
+    for(int i = 0; i < targetRects.size(); i++){
+        targetRects[i]->currentRect.set(ofLerp(targetRects[i]->currentRect.x, rectangles[i]->currentRect.x+rectangles[i]->screenOffset*fboWidth, targetLerp), ofLerp(targetRects[i]->currentRect.y, rectangles[i]->currentRect.y, targetLerp), ofLerp(targetRects[i]->currentRect.width, rectangles[i]->targetRect.width, targetLerp), ofLerp(targetRects[i]->currentRect.height, rectangles[i]->targetRect.height, targetLerp));
+    }
+}
+void ofApp::mouseMoved(int x, int y ){
+    
+}
+void ofApp::mouseDragged(int x, int y, int button){
+    
+}
+void ofApp::mousePressed(int x, int y, int button){
+    
+}
+void ofApp::mouseReleased(int x, int y, int button){
+    
+}
+
+void ofApp::draw(){
+    
+    ofBackground(0);
+    ofSetColor(255);
+    ofEnableAlphaBlending();
+
+    ofNoFill();
+    ofPushMatrix();
+    {
+        ofTranslate(ofGetWidth()/2, ofGetHeight()/2);
+        ofScale(0.5, 0.5);
+        for(int i = 0; i < 4; i++){
+            ofPushMatrix();
+            {
+                if(i == 1){
+                    ofRotateX(180);
+                }
+                if(i == 2){
+                    ofRotateX(180);
+                    ofRotateY(180);
+                }
+                if(i == 3){
+                    ofRotateX(180);
+                    ofRotateY(180);
+                    ofRotateX(180);
+                }
+                
+                //                ofRotateZ(90*i);
+                
+                for (int i = rects.size()-1; i>=0; i--){
+                    ColoredRectangle & rect = *targetRectMap[((ColoredRectangle*)rects[i])->uuid];
+                    if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
+                    else ofSetColor(255, 255, 0, 255);
+                    ofNoFill();
+                    ofPushMatrix();
+                    
+                    ofDrawRectangle(rect.currentRect);
+                    if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 100);
+                    else ofSetColor(255, 255, 0, 100);
+                    ofFill();
+                    ofDrawRectangle(rect.currentRect);
+                    ofPopMatrix();
+                }
+                
+            }
+            ofPopMatrix();
+            
+            
+        }
+    }
+    ofPopMatrix();
+    ofDisableAlphaBlending();
+    ofFill();
+    ofSetColor(255, 255, 255, 255);
+    
+    
+    ofEnableAlphaBlending();
+    ofSetColor(0, 0, 0, 200);
+    ofPushMatrix();
+    ofScale(0.1, 0.1);
+    ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
+    for (int i = rects.size()-1; i>=0; i--){
+        ColoredRectangle & rect = *targetRectMap[((ColoredRectangle*)rects[i])->uuid];
+        if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
+        else ofSetColor(255, 255, 0, 255);
+        ofNoFill();
         ofPushMatrix();
-        ofTranslate(x,y);
-        ofSetColor(255,255,255,255);
-        float width = w;
-        float height = width*grabbers[i]->getHeight()/grabbers[i]->getWidth();
-        grabbers[i]->draw(0, 0,width,height); // draw the camera
+        
+        ofDrawRectangle(rect.currentRect);
+        if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 100);
+        else ofSetColor(255, 255, 0, 100);
+        ofFill();
+        ofDrawRectangle(rect.currentRect);
         ofPopMatrix();
     }
+    ofPopMatrix();
+    ofDisableAlphaBlending();
+    ofDrawBitmapStringHighlight(ofToString(ofGetFrameRate(),1), 10, 10);
     
     
+    
+    panel.draw();
 }
 
-//------------------------------------------------------------------------------
-void ofApp::keyPressed(int key)
-{
-    if(key == ' ')
-    {
-        // initialize connection
-        for(std::size_t i = 0; i < NUM_CAMERAS; i++)
-        {
-            ofRemoveListener(grabbers[i]->videoResized, this, &ofApp::videoResized);
-            SharedIPVideoGrabber c = IPVideoGrabber::makeShared();
-            IPCameraDef& cam = getNextCamera();
-            c->setUsername(cam.getUsername());
-            c->setPassword(cam.getPassword());
-            Poco::URI uri(cam.getURL());
-            c->setURI(uri);
-            c->connect();
-            
-            grabbers[i] = c;
+
+void ofApp::keyPressed(int key){
+    int expandScreen = -1;
+    switch (key) {
+        case '1':
+            expandScreen = 0;
+            break;
+        case '2':
+            expandScreen = 1;
+            break;
+        case '3':
+            expandScreen = 2;
+            break;
+        case '4':
+            expandScreen = 3;
+            break;
+        case '5':
+            expandScreen = 4;
+            break;
+        case '6':
+            expandScreen = 5;
+            break;
+    }
+    if(expandScreen != -1){
+        if(!rectangles[expandScreen]->bExpanded){
+            rectangles[expandScreen]->bExpanded = true;
+            numExpanded++;
+        }else{
+            rectangles[expandScreen]->bExpanded = false;
+            numExpanded--;
+            if(numExpanded < 0){
+                numExpanded = 0;
+            }
         }
+    }else if(key == ' '){
+        for(int i = 0; i < targetRects.size(); i++){
+            rectangles[i]->bExpanded = false;
+            
+        }
+        numExpanded = 0;
     }
 }
+

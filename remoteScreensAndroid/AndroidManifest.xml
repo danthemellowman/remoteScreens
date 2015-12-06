@@ -32,7 +32,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <receiver android:name="cc.openFrameworks.remoteScreensAndroid.BootReceiver" >
+        <receiver android:name="cc.openframeworks.remoteScreensAndroid.BootReceiver" >
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>

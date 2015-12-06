@@ -25,92 +25,66 @@
 
 #pragma once
 
-
 #include "ofMain.h"
-#include "ofxXmlSettings.h"
-#include "IPVideoGrabber.h"
-#include "ofxSyphon.h"
+#include "ofxRectangleUtils.h"
+#include "ofxRectangle.h"
+#include "ofxGui.h"
 
-#if defined(TARGET_OF_IPHONE) || defined(TARGET_ANDROID) || defined(TARGET_LINUX_ARM)
-#define NUM_CAMERAS 1
-#define NUM_ROWS 1
-#define NUM_COLS 1
-#else
-#define NUM_CAMERAS 2
-#define NUM_ROWS 2
-#define NUM_COLS 1
-#endif
-
-
-class IPCameraDef
-{
+class ColoredRectangle : public ofRectangle{
 public:
-    IPCameraDef()
-    {
-    }
-    
-    IPCameraDef(const std::string& url): _url(url)
-    {
-    }
-    
-    IPCameraDef(const std::string& name,
-                const std::string& url,
-                const std::string& username,
-                const std::string& password):
-    _name(name),
-    _url(url),
-    _username(username),
-    _password(password)
-    {
-    }
-    
-    void setName(const std::string& name) { _name = name; }
-    std::string getName() const { return _name; }
-    
-    void setURL(const std::string& url) { _url = url; }
-    std::string getURL() const { return _url; }
-    
-    void setUsername(const std::string& username) { _username = username; }
-    std::string getUsername() const { return _username; }
-    
-    void setPassword(const std::string& password) { _password = password; }
-    std::string getPassword() const { return _password; }
-    
-    
-private:
-    std::string _name;
-    std::string _url;
-    std::string _username;
-    std::string _password;
+    ofRectangle rect;
+    ofRectangle targetRect;
+    ofRectangle currentRect;
+    ofRectangle min;
+    ofRectangle max;
+    int screenOffset;
+    float aspectRatio;
+    bool alive;
+    bool bExpanded;
+    ofColor color;
+    string uuid;
 };
 
 
-using ofx::Video::IPVideoGrabber;
-using ofx::Video::SharedIPVideoGrabber;
-
-
-class ofApp: public ofBaseApp
-{
+class ofApp : public ofBaseApp {
 public:
     void setup();
     void update();
     void draw();
+
+	void keyPressed(int key);
+	void keyReleased(int key){};
+    void mouseMoved(int x, int y );
+    void mouseDragged(int x, int y, int button);
+    void mousePressed(int x, int y, int button);
+    void mouseReleased(int x, int y, int button);
+
+	void reCreateRects();
+	void packAll(float padding);
+
+    bool bTogglerectangles;
+
+	vector<ofRectanglePacker*> packer;
+    map<string, ColoredRectangle*> targetRectMap;
+    map<string, ColoredRectangle*> rectMap;
+	vector<ofFbo> fbos;
+	vector<ColoredRectangle*> rectangles;
+    vector<ofRectangle*> rects;
+    vector<ColoredRectangle*> targetRects;
+	vector< vector<ColoredRectangle*> > targetrectsPerFbo;
+    vector< vector<ColoredRectangle*> > rectsPerFbo;
+
     
-    void keyPressed(int key);
+	int padding;
     
-    void newCamera(string name, string ip);
-    
-    std::vector<SharedIPVideoGrabber> grabbers;
-    
-    void loadCameras();
-    ofxSyphonServer server;
-    IPCameraDef& getNextCamera();
-    std::vector<IPCameraDef> ipcams; // a list of IPCameras
-    int nextCamera;
-    
-    // This message occurs when the incoming video stream image size changes.
-    // This can happen if the IPCamera has a single broadcast state (some cheaper IPCams do this)
-    // and that broadcast size is changed by another user.
-    void videoResized(const void* sender, ofResizeEventArgs& arg);
-    
+    ofxPanel panel;
+    ofParameterGroup lerps;
+    ofParameter<float> rectLerp;
+    ofParameter<float> targetLerp;
+    int numExpanded;
+    int numRects;
+    float fboWidth;
+    float fboHeight;
+    float textureHeight;
+    float textureWidth;
 };

@@ -1,5 +1,6 @@
 ofxGui
+ofxIpVideoGrabber
 ofxOsc
+ofxRectangleUtils
 ofxThreadedImageLoader
 ofxXmlSettings
-ofxIpVideoGrabber
