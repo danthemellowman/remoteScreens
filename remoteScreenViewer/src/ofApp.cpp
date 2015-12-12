@@ -3,8 +3,9 @@
 
 
 void ofApp::setup(){
-    ofSetVerticalSync(true);
     ofSetFrameRate(60);
+    ofSetVerticalSync(true);
+    
     //    ofEnableSmoothing();
     //    ofEnableAntiAliasing();
     
@@ -13,7 +14,6 @@ void ofApp::setup(){
     fboHeight = 1024;
     textureWidth = fboWidth/(numRects/2);
     textureHeight = textureWidth;
-    reCreateRects();
     
     
     
@@ -22,13 +22,35 @@ void ofApp::setup(){
     lerps.add(scaleOutputMin.set("Scale Min", 0.5, 0.001, 1.0));
     lerps.add(scaleOutputMax.set("Scale Max", 0.5, 0.001, 1.0));
     lerps.add(debugView.set("debugView",false));
+    lerps.add(padding.set("paddings", 25, 0, 100));
+    lerps.add(aspectRatio.set("aspectRatio", 1.33333333333, 1, 4));
+    lerps.add(pBlur.set("Blur", 0.1, 0.0, 1.0));
+    
     panel.setup(lerps);
     panel.loadFromFile("Settings.xml");
     numExpanded = 0;
     
-    ofSetFullscreen(true);
     loadCameras();
-    fbo.allocate(ofGetScreenWidth(), ofGetScreenHeight(), GL_RGBA32F);
+    
+    
+    fbo.allocate(1024, 768, GL_RGBA);
+    //    fbo.clear();
+    fboPing.allocate(1024, 768, GL_RGBA);
+    //    fboPing.clear();
+    fboPong.allocate(1024, 768, GL_RGBA);
+    //    fboPong.clear();
+    
+    motionBlur.load("shader/shader");
+    
+    receiver.setup(7777);
+    
+    //    debugSeq.loadSequence("debug/seq");
+    //    debugSeq.preloadAllFrames();
+    //    debugSeq.setFrameRate(7);
+ 
+    
+    reCreateRects();
+    
 }
 
 
@@ -61,8 +83,9 @@ void ofApp::newCamera(string name, string ip){
     
     // if desired, set up a video resize listener
     ofAddListener(c->videoResized, this, &ofApp::videoResized);
-    
+    //    c->setReconnectTimeout(1000);
     grabbers.push_back(c);
+    grabbermap[name] = c;
     
     nextCamera = ipcams.size();
 }
@@ -70,8 +93,27 @@ void ofApp::newCamera(string name, string ip){
 //------------------------------------------------------------------------------
 void ofApp::loadCameras()
 {
-    newCamera("phone1", "http://phone0.wv.cc.cmu.edu:7890/ipvideo");
-    newCamera("phone2", "http://phone1.wv.cc.cmu.edu:7890/ipvideo");
+    ofxXmlSettings camerasSettings;
+    if(camerasSettings.load("cameras.xml")){
+        camerasSettings.pushTag("settings");
+        {
+            int numCams = camerasSettings.getNumTags("camera");
+            for(int i = 0; i < numCams; i++)
+            {
+                newCamera(camerasSettings.getValue("camera", "cam"+ofToString(i), i), camerasSettings.getValue("address", "127.0.0.1", i));
+            }
+        }
+        camerasSettings.popTag();
+    }else{
+        newCamera("0", "http://phone0.wv.cc.cmu.edu:7890/ipvideo");
+        newCamera("1", "http://phone1.wv.cc.cmu.edu:7890/ipvideo");
+        newCamera("2", "http://phone3.wv.cc.cmu.edu:7890/ipvideo");
+        newCamera("3", "http://phone4.wv.cc.cmu.edu:7890/ipvideo");
+        newCamera("4", "http://phone5.wv.cc.cmu.edu:7890/ipvideo");
+        newCamera("5", "http://phone6.wv.cc.cmu.edu:7890/ipvideo");
+
+    }
+    
 }
 
 //------------------------------------------------------------------------------
@@ -87,6 +129,7 @@ void ofApp::videoResized(const void* sender, ofResizeEventArgs& arg)
             ss << "Camera connected to: " << grabbers[i]->getURI() + " ";
             ss << "New DIM = " << arg.width << "/" << arg.height;
             ofLogVerbose("ofApp") << ss.str();
+            aspectRatio = arg.width/arg.height;
         }
     }
 }
@@ -115,6 +158,10 @@ void ofApp::reCreateRects(){
         ((ColoredRectangle*)rects[i])->alive = true;
         ((ColoredRectangle*)rects[i])->uuid = ofToString(i);
         ((ColoredRectangle*)rects[i])->bExpanded = false;
+        ((ColoredRectangle*)rects[i])->bRecord = false;
+        ((ColoredRectangle*)rects[i])->frameNum = 0;
+        
+        
         
         x+=textureWidth;
         if(x+textureWidth >= fboWidth){
@@ -127,7 +174,19 @@ void ofApp::reCreateRects(){
         targetRects.back()->uuid = ((ColoredRectangle*)rects[i])->uuid;
         targetRects.back()->color = ((ColoredRectangle*)rects[i])->color;
         targetRectMap[targetRects.back()->uuid] = targetRects.back();
-        rectMap[((ColoredRectangle*)rects[i])->uuid] = (ColoredRectangle*)rects[i];
+        rectMap[((ColoredRectangle*)rects[i])->uuid] = (ColoredRectangle*)rectangles[i];
+        delays[targetRects.back()->uuid] = FadeTimer();
+        delays[targetRects.back()->uuid].setLength(0.5, 10);
+        delays[targetRects.back()->uuid].stop();
+        hyster[targetRects.back()->uuid] = Hysteresis();
+        hyster[targetRects.back()->uuid].setDelay(0);
+        recorder[targetRects.back()->uuid] = (new ofxImageSequenceRecorder());
+        recorder[targetRects.back()->uuid]->setFormat("jpg");
+        recordings[targetRects.back()->uuid] = (new ofxImageSequence());
+        recordings[targetRects.back()->uuid]->enableThreadedLoad(false);
+        recordings[targetRects.back()->uuid]->loadSequence(ofToDataPath("captures/"+ofToString(i)));
+        recordings[targetRects.back()->uuid]->preloadAllFrames();
+        recordings[targetRects.back()->uuid]->setFrameRate(7);
         
     }
 }
@@ -144,17 +203,17 @@ void ofApp::packAll(float padding){
     packer.push_back(new ofRectanglePacker(bounds, padding));
     rectsPerFbo.resize(1); //add the 1st one
     
-    for (int i = rects.size()-1; i >=0; --i) {
+    for (int i = 0; i < rectangles.size(); i++) {
         bool didFit = false;
         for(int j = 0; j < packer.size() && !didFit; j++){
-            didFit = packer[j]->pack( ((ColoredRectangle*)rects[i])->currentRect);
+            didFit = packer[j]->pack(rectangles[i]->currentRect);
             if(didFit){
-                ((ColoredRectangle*)rects[i])->screenOffset = j;
+                rectangles[i]->screenOffset = j;
             }
             
         }
         if(!didFit){
-            i++;
+            i--;
             packer.push_back(new ofRectanglePacker(bounds, padding));
         }
     }
@@ -163,51 +222,121 @@ void ofApp::packAll(float padding){
         packer.erase(packer.begin()+i);
         delete packer[i];
     }
+    maxw = -1;
+    for (int i = 0; i < rectangles.size(); i++) {
+        maxw = MAX(maxw, rectangles[i]->currentRect.x+rectangles[i]->currentRect.width);
+    }
 }
 
 
 
 void ofApp::update(){
-    
-    // update the cameras
-    for(std::size_t i = 0; i < grabbers.size(); i++)
-    {
-        grabbers[i]->update();
+    float time = ofGetElapsedTimef();
+    while(receiver.hasWaitingMessages()){
+        ofxOscMessage b;
+        receiver.getNextMessage(b);
+        if(b.getAddress() == "/record"){
+            bool isTouched = b.getArgAsBool(1);
+            if(isTouched && !rectMap[b.getArgAsString(0)]->bExpanded){
+                rectMap[b.getArgAsString(0)]->bExpanded = true;
+                rectMap[b.getArgAsString(0)]->bRecord = true;
+                rectMap[b.getArgAsString(0)]->startTime = ofGetElapsedTimef();
+                rectMap[b.getArgAsString(0)]->recordingPath = ofToDataPath("captures/"+b.getArgAsString(0));
+                rectMap[b.getArgAsString(0)]->frameNum = 0;
+                ofDirectory::createDirectory(rectMap[b.getArgAsString(0)]->recordingPath);
+                recordingPaths.push_back(rectMap[b.getArgAsString(0)]->recordingPath);
+                recorder[b.getArgAsString(0)]->setPrefix(rectMap[b.getArgAsString(0)]->recordingPath+"/frame-");
+                if(!recorder[b.getArgAsString(0)]->isThreadRunning())
+                    recorder[b.getArgAsString(0)]->startThread();
+                
+                numExpanded++;
+            }
+            if(!isTouched && rectMap[b.getArgAsString(0)]->bExpanded){
+                rectMap[b.getArgAsString(0)]->bExpanded = false;
+                rectMap[b.getArgAsString(0)]->bRecord = false;
+                rectMap[b.getArgAsString(0)]->lastActive = ofGetElapsedTimef();
+                numExpanded--;
+                if(numExpanded < 0){
+                    numExpanded = 0;
+                }
+            }
+            hyster[b.getArgAsString(0)].set(isTouched);
+            delays[b.getArgAsString(0)].update(hyster[b.getArgAsString(0)]);
+        }
+        if(b.getAddress() == "/motion"){
+            //            if(delays[b.getArgAsString(0)].getActive())
+            //                delays[b.getArgAsString(0)].stop();
+            //            delays[b.getArgAsString(0)].start();
+        }
     }
     
-    float totalArea = fboWidth*fboHeight;
-    int offset = numExpanded<numRects?numExpanded+1:numRects;
-    float expandedHeight = floor(sqrt(totalArea/(offset)));
-    float expandedArea = expandedHeight*(expandedHeight/1.7)*(numExpanded==0?0:offset);
-    float height = sqrt((totalArea-expandedArea)/(numRects));
     
+    // update the cameras
+    for(int i = 0; i < grabbers.size(); i++)
+    {
+        grabbers[i]->update();
+        if(grabbers[i]->isFrameNew()){
+            if(rectMap[ipcams[i].getName()]->bRecord){
+                recorder[ipcams[i].getName()]->addFrame(grabbers[i]->getPixels());
+                recordings[ipcams[i].getName()]->addImage(grabbers[i]->getPixels());
+                recordings[ipcams[i].getName()]->dumpImage();
+            }
+        }
+    }
+    
+    
+    
+    
+    float totalArea = fboWidth*fboHeight;
+    int offset = numExpanded+1;
+    float expandedHeight = floor(sqrt(totalArea/(offset)));
+    float expandedArea = (expandedHeight+padding)*((expandedHeight+padding)/aspectRatio)*numExpanded;
+    float height = sqrt((totalArea-expandedArea)/(numRects-numExpanded));
+    
+    if(expandedHeight<height){
+        height = expandedHeight*0.75;
+    }
     
     for(int i = 0; i < rectangles.size(); i++){
         if(rectangles[i]->bExpanded){
-            ofRectangle fooRect = ofRectangle(0, 0, expandedHeight/1.7, expandedHeight);
+            ofRectangle fooRect = ofRectangle(0, 0, expandedHeight/aspectRatio, expandedHeight);
             rectangles[i]->targetRect = fooRect;
         }else{
             
-            rectangles[i]->targetRect = ofRectangle(0, 0, height/1.7, height);
+            rectangles[i]->targetRect = ofRectangle(0, 0, height/aspectRatio, height);
             
         }
-        
+        float offset = rectangles[i]->screenOffset>0?maxw:0;
+        //        cout<<offset<<endl;
         rectangles[i]->currentRect.set(targetRects[i]->currentRect.x, targetRects[i]->currentRect.y, ofLerp(rectangles[i]->currentRect.width, rectangles[i]->targetRect.width, rectLerp), ofLerp(rectangles[i]->currentRect.height, rectangles[i]->targetRect.height, rectLerp));
         rectangles[i]->set(rectangles[i]->currentRect);
         
     }
     
     
-    
-    
-    
-    packAll(0);
-    
     ofx::RectangleUtils::sortByHeight(rects);
     
     
+    packAll(padding);
+    
+    
+    
+    
     for(int i = 0; i < targetRects.size(); i++){
-        targetRects[i]->currentRect.set(ofLerp(targetRects[i]->currentRect.x, rectangles[i]->currentRect.x+rectangles[i]->screenOffset*fboWidth, targetLerp), ofLerp(targetRects[i]->currentRect.y, rectangles[i]->currentRect.y, targetLerp), ofLerp(targetRects[i]->currentRect.width, rectangles[i]->targetRect.width, targetLerp), ofLerp(targetRects[i]->currentRect.height, rectangles[i]->targetRect.height, targetLerp));
+        float offset = rectangles[i]->screenOffset>0?maxw:0;
+        
+        
+        targetRects[i]->currentRect.set(ofLerp(targetRects[i]->currentRect.x, rectangles[i]->currentRect.x+offset, targetLerp), ofLerp(targetRects[i]->currentRect.y, rectangles[i]->currentRect.y, targetLerp), ofLerp(targetRects[i]->currentRect.width, rectangles[i]->targetRect.width, targetLerp), ofLerp(targetRects[i]->currentRect.height, rectangles[i]->targetRect.height, targetLerp));
+    }
+    
+    smoothScale = ofLerp(smoothScale, ofMap(numExpanded, 0, numRects, scaleOutputMin, scaleOutputMax), targetLerp);
+    
+    for(map<string, ofxImageSequenceRecorder*>::iterator iter = recorder.begin(); iter != recorder.end(); ++iter){
+        if(iter->second->isThreadRunning() && !rectMap[iter->first]->bRecord){
+            if(iter->second->getCount() < 1){
+                iter->second->stopThread();
+            }
+        }
     }
 }
 void ofApp::mouseMoved(int x, int y ){
@@ -224,18 +353,28 @@ void ofApp::mouseReleased(int x, int y, int button){
 }
 
 void ofApp::draw(){
-    
+    float time = ofGetElapsedTimef();
     ofBackground(0);
     ofSetColor(255);
+    ofEnableAlphaBlending();
+    
+    fboPing.begin();
+    ofSetColor(255, 255, 255, 255);
+    fboPong.draw(0, 0);
+    fboPing.end();
+    
+    
     
     fbo.begin();
     ofClear(0, 0, 0, 0);
+    ofSetColor(255, 255, 255, 255);
     ofPushMatrix();
     {
         ofTranslate(fbo.getWidth()/2, fbo.getHeight()/2);
-        ofScale(ofMap(numExpanded, 0, numRects, scaleOutputMin, scaleOutputMax), ofMap(numExpanded, 0, numRects, scaleOutputMin, scaleOutputMax));
+        ofScale(smoothScale, smoothScale, smoothScale);
         for(int j = 0; j < 4; j++){
             ofPushMatrix();
+            
             {
                 if(j == 1){
                     ofRotateX(180);
@@ -249,40 +388,67 @@ void ofApp::draw(){
                     ofRotateY(180);
                     ofRotateX(180);
                 }
-                
-                //                ofRotateZ(90*i);
+                ofTranslate(-padding/2, -padding/2);
                 int fooCamera = 0;
-                for (int i = rects.size()-1; i>=0; i--){
-                    if(i%2==0)fooCamera = 1;
-                    else fooCamera = 0;
-                    ColoredRectangle & rect = *targetRectMap[((ColoredRectangle*)rects[i])->uuid];
+                for (int i = 0; i<rectangles.size(); i++){
+                    fooCamera = ofToInt(rectangles[i]->uuid)%grabbers.size();
+                    ColoredRectangle & rect = *targetRectMap[rectangles[i]->uuid];
                     
                     ofPushMatrix();
                     {
-                        ofSetColor(255, 255, 255, 255);
+                        ofSetColor(255*(delays[rectangles[i]->uuid].get()), 255*(delays[rectangles[i]->uuid].get()), 255*(delays[rectangles[i]->uuid].get()), 255*(delays[rectangles[i]->uuid].get()));
                         ofFill();
                         ofTranslate(rect.currentRect.x, rect.currentRect.y);
+                        //                        if(delays[rect.uuid].get() != 1.0){
                         ofPushMatrix();
                         {
                             ofRotate(90);
                             
                             ofTranslate(rect.currentRect.getHeight()/2, -rect.currentRect.getWidth()/2);
+                            
                             if(j==0 || j == 3){
                                 grabbers[fooCamera]->draw(rect.currentRect.getHeight()/2,-rect.currentRect.getWidth()/2, -rect.currentRect.getHeight(), rect.currentRect.getWidth());
                             }
                             if(j == 1 || j == 2){
                                 
-                                grabbers[fooCamera]->draw(-rect.currentRect.getHeight()/2,-rect.currentRect.getWidth()/2, rect.currentRect.getHeight(), rect.currentRect.getWidth());
+                                grabbers[fooCamera]->draw(-rect.currentRect.getHeight()/2,rect.currentRect.getWidth()/2, rect.currentRect.getHeight(), -rect.currentRect.getWidth());
                                 
                             }
                             
+                            
+                            
                         }
                         ofPopMatrix();
+                        //                        }else{
+                        ofSetColor(255*(1-delays[rectangles[i]->uuid].get()), 255*(1-delays[rectangles[i]->uuid].get()), 255*(1-delays[rectangles[i]->uuid].get()), 255*(1-delays[rectangles[i]->uuid].get()));
+                        ofPushMatrix();
+                        {
+                            ofRotate(90);
+                            
+                            ofTranslate(rect.currentRect.getHeight()/2, -rect.currentRect.getWidth()/2);
+                            
+                            if(j==0 || j == 3){
+                                recordings[rectangles[i]->uuid]->getTextureForTime(time+i).draw(rect.currentRect.getHeight()/2,-rect.currentRect.getWidth()/2, -rect.currentRect.getHeight(), rect.currentRect.getWidth());
+                            }
+                            if(j == 1 || j == 2){
+                                
+                                recordings[rectangles[i]->uuid]->getTextureForTime(time+i).draw(-rect.currentRect.getHeight()/2,rect.currentRect.getWidth()/2, rect.currentRect.getHeight(), -rect.currentRect.getWidth());
+                                
+                            }
+                            
+                            
+                            
+                        }
+                        ofPopMatrix();
+                        
+                        
                         if(debugView){
                             ofNoFill();
-                            if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
+                            if(rectMap[rect.uuid]->bExpanded) ofSetColor(255, 0, 255, 255);
                             else ofSetColor(255, 255, 0, 255);
                             ofDrawRectangle(0,0,rect.currentRect.width, rect.currentRect.height);
+                            ofFill();
+                            ofSetColor(255, 255, 255);
                         }
                     }
                     ofPopMatrix();
@@ -294,10 +460,28 @@ void ofApp::draw(){
             
         }
     }
+    
     ofPopMatrix();
     fbo.end();
     
+    fboPong.begin();
+    ofClear(0, 0, 0, 0);
+    motionBlur.begin();
+    motionBlur.setUniform1f("blur", pBlur);
+    motionBlur.setUniformTexture("tex0", fbo.getTexture(), 1);
+    motionBlur.setUniformTexture("tex1", fboPing.getTexture(), 2);
+    ofSetColor(255, 255, 255, 255);
     fbo.draw(0, 0);
+    motionBlur.end();
+    fboPong.end();
+    
+    fboPong.draw(0, 0);
+    
+    ofDisableAlphaBlending();
+    
+    server.publishScreen();
+    
+    //    fbo.draw(0, 0);
     
     if(debugView){
         ofEnableAlphaBlending();
@@ -310,21 +494,33 @@ void ofApp::draw(){
             else ofSetColor(255, 255, 0, 255);
             ofNoFill();
             ofPushMatrix();
-            
-            ofDrawRectangle(rect.currentRect);
-            if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 100);
-            else ofSetColor(255, 255, 0, 100);
-            ofFill();
-            ofDrawRectangle(rect.currentRect);
+            {
+                ofDrawRectangle(rect.currentRect);
+                if(rectMap[((ColoredRectangle*)rects[i])->uuid]->bExpanded) ofSetColor(255, 0, 255, 100);
+                else ofSetColor(255, 255, 0, 100);
+                ofFill();
+                ofDrawRectangle(rect.currentRect);
+            }
             ofPopMatrix();
         }
         ofPopMatrix();
         ofDisableAlphaBlending();
         ofDrawBitmapStringHighlight(ofToString(ofGetFrameRate(),1), 10, 10);
+        
+        
+        
+        debugSeq.getTextureForTime(ofGetElapsedTimef()).draw(ofGetScreenWidth()-debugSeq.getWidth()/10, 0, debugSeq.getWidth()/10, debugSeq.getHeight()/10);
+        
+        panel.draw();
     }
-    
-    
-    panel.draw();
+}
+
+void ofApp::exit(){
+    for(int i = 0; i < recorder.size(); i++){
+        recorder[rectangles[i]->uuid]->waitForThread();
+        recorder[rectangles[i]->uuid]->stopThread();
+    }
+    panel.saveToFile("Settings.xml");
 }
 
 
@@ -333,6 +529,7 @@ void ofApp::keyPressed(int key){
     switch (key) {
         case '1':
             expandScreen = 0;
+            
             break;
         case '2':
             expandScreen = 1;
@@ -353,9 +550,21 @@ void ofApp::keyPressed(int key){
     if(expandScreen != -1){
         if(!rectangles[expandScreen]->bExpanded){
             rectangles[expandScreen]->bExpanded = true;
+            rectangles[expandScreen]->bRecord = true;
+            rectangles[expandScreen]->startTime = ofGetElapsedTimef();
+            rectangles[expandScreen]->recordingPath = ofToDataPath("captures/"+ofToString(expandScreen));
+            rectangles[expandScreen]->frameNum = 0;
+            ofDirectory::createDirectory(rectangles[expandScreen]->recordingPath);
+            recordingPaths.push_back(rectangles[expandScreen]->recordingPath);
+            recorder[rectangles[expandScreen]->uuid]->setPrefix(rectangles[expandScreen]->recordingPath+"/frame-");
+            if(!recorder[rectangles[expandScreen]->uuid]->isThreadRunning())
+                recorder[rectangles[expandScreen]->uuid]->startThread();
+            
             numExpanded++;
         }else{
             rectangles[expandScreen]->bExpanded = false;
+            rectangles[expandScreen]->bRecord = false;
+            rectangles[expandScreen]->lastActive = ofGetElapsedTimef();
             numExpanded--;
             if(numExpanded < 0){
                 numExpanded = 0;
@@ -364,9 +573,19 @@ void ofApp::keyPressed(int key){
     }else if(key == ' '){
         for(int i = 0; i < targetRects.size(); i++){
             rectangles[i]->bExpanded = false;
+            rectangles[i]->bRecord = false;
+            rectangles[i]->lastActive = ofGetElapsedTimef();
             
         }
         numExpanded = 0;
+    }
+    
+    if(key == 'd'){
+        debugView = !debugView;
+    }
+    
+    if(key == 'f'){
+        ofToggleFullscreen();
     }
 }
 

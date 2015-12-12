@@ -4,6 +4,8 @@ import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.KeyEvent;
@@ -26,6 +28,10 @@ public class OFActivity extends cc.openframeworks.OFActivity{
         super.onCreate(savedInstanceState);
         String packageName = getPackageName();
         getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD);
+        WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
+        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+        int ipAddress = wifiInfo.getIpAddress();
+        String ipString = String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff), (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
         ofApp = new OFAndroid(packageName,this);
     }
 	

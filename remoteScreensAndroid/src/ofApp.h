@@ -5,6 +5,7 @@
 #include "ofxHTTP.h"
 #include "ofxOsc.h"
 #include "ofxAccelerometer.h"
+#include "ofxTiming.h"
 class ofApp : public ofxAndroidApp{
 
 public:
@@ -39,10 +40,11 @@ public:
 	int camera_fps;
 	int frames_one_sec;
 	ofPixels* pix;
-	vector<ofImage*> cameraImages;
+//	vector<ofImage*> cameraImages;
 	ofImage* image;
 	ofx::HTTP::SimpleIPVideoServer server;
 	ofxOscSender sender;
+	ofxOscReceiver receiver;
 	int cameraID;
 	int preCameraID;
 	bool drawConnections;
@@ -50,14 +52,22 @@ public:
 
 	bool cameraChange;
 
+
 	ofTrueTypeFont font;
 	ofVec3f accel, normAccel;
 	string messages[3];
 
 	vector<ofRectangle> rects;
 
-
+	bool bTouch;
+	bool bPtouch;
 	bool facing;
 	int orientation;
+
+	float mFade;
+	FadeTimer fader;
+
+	float mFadeDelay;
+	FadeTimer faderDelay;
 
 };

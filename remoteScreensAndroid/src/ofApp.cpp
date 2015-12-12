@@ -5,11 +5,12 @@
 void ofApp::setup(){
 	ofDisableArbTex();
 	ofxAccelerometer.setup();
-	ofBackground(255,255,255);
+	ofSetVerticalSync(false);
+	ofBackground(0,0,0);
 	ofSetLogLevel(OF_LOG_NOTICE);
 	ofSetOrientation(OF_ORIENTATION_DEFAULT);
 	preCameraID = cameraID = 0;
-	camWidth = 720;
+	camWidth = 640;
 	camHeight = 480;
 	grabber.setDeviceID(cameraID);
 	grabber.setup(camWidth, camHeight);
@@ -20,7 +21,7 @@ void ofApp::setup(){
 	settings.setPort(7890);
 
 	// The default maximum number of client connections is 5.
-	settings.ipVideoRouteSettings.setMaxClientConnections(6);
+	settings.ipVideoRouteSettings.setMaxClientConnections(2);
 
 	// Apply the settings.
 	server.setup(settings);
@@ -33,19 +34,23 @@ void ofApp::setup(){
 	image = new ofImage();
 	image->allocate(camWidth, camHeight, OF_IMAGE_COLOR);
 
-
-
+	sender.setup("REMOTEVIEWER.WV.CC.CMU.EDU", 7777);
+//	sender.setup("10.0.0.5", 7777);
+	//	receiver.setup(7776);
 	drawConnections = false;
+
+	bPtouch = false;
+	bTouch = false;
+
+	fader.setLength(0.5, 0.5);
+	faderDelay.setLength(1.55, 0);
+
 }
+
+
 
 //--------------------------------------------------------------
 void ofApp::update(){
-	accel = ofxAccelerometer.getForce();
-	messages[0] = "g(x) = " + ofToString(accel.x,2);
-	messages[1] = "g(y) = " + ofToString(accel.y,2);
-	messages[2] = "g(z) = " + ofToString(accel.z,2);
-	normAccel = accel.getNormalized();
-
 	grabber.update();
 	if(grabber.isFrameNew()){
 		if(cameraChange){
@@ -57,42 +62,85 @@ void ofApp::update(){
 	}
 	if(cameraID != preCameraID){
 		cameraChange = true;
-		grabber.close();
-		ofLog()<<"grabber.setDeviceID()"<<endl;
-		grabber.setDeviceID(cameraID);
-		ofLog()<<"grabber.setup()"<<endl;
-		grabber.setup(camWidth, camHeight);
+
 		preCameraID = cameraID;
+		if(fader.getActive()){
+			fader.stop();
+		}
+		fader.start();
 	}
+
+
+	mFade = fader.get();
+	mFadeDelay = faderDelay.get();
+	if(fader.getActive() && mFade == 1.0 && !faderDelay.getActive()){
+		faderDelay.start();
+		grabber.close();
+		grabber.setDeviceID(cameraID);
+		grabber.setup(camWidth, camHeight);
+
+	}
+	if(faderDelay.getActive() && mFadeDelay == 1.0){
+		fader.stop();
+		faderDelay.stop();
+	}
+
+
+	accel = ofxAccelerometer.getForce();
+	messages[0] = "g(x) = " + ofToString(accel.x,2);
+	messages[1] = "g(y) = " + ofToString(accel.y,2);
+	messages[2] = "g(z) = " + ofToString(accel.z,2);
+	normAccel = accel.getNormalized();
+
+	ofxOscMessage movements;
+	movements.setAddress("/movement");
+	movements.addStringArg("4");
+	movements.addFloatArg(normAccel.x);
+	movements.addFloatArg(normAccel.y);
+	movements.addFloatArg(normAccel.z);
+	sender.sendMessage(movements, false);
+
+//	if(bPtouch != bTouch){
+		ofxOscMessage recording;
+		recording.setAddress("/record");
+		recording.addStringArg("4");
+		recording.addBoolArg(bTouch);
+
+		sender.sendMessage(recording, false);
+//		bPtouch = bTouch;
+//	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
 	ofBackground(0, 0, 0);
-	ofSetHexColor(0xFFFFFF);
 	float width = ofGetHeight();
 	float height = width*image->getHeight()/image->getWidth();
 
-	if(!cameraChange){
+
+	//	if(!cameraChange){
+	ofPushMatrix();
+	{
+		ofTranslate(ofGetWidth()/2.0, ofGetHeight()/2.0);
 		ofPushMatrix();
 		{
-			ofTranslate(ofGetWidth()/2.0, ofGetHeight()/2.0);
-			ofPushMatrix();
-			{
-				ofRotate(90);
-				grabber.draw(-ofGetHeight()/2, -ofGetWidth()/2, width, height);
+
+			if(!fader.getActive()){
+				ofSetColor(255, 255, 255, 255);
+			}else{
+				ofSetColor(255*(1-mFade), 255*(1-mFade), 255*(1-mFade), 255*(1-mFade));
 			}
-			ofPopMatrix();
+			ofRotate(90);
+			grabber.draw(-ofGetHeight()/2, -ofGetWidth()/2, width, height);
 		}
 		ofPopMatrix();
-	}else{
-		ofSetColor(0, 0, 0);
-		ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
 	}
+	ofPopMatrix();
+	//	}
 }
 
 //--------------------------------------------------------------
-void ofApp::keyPressed  (int key){ 
+void ofApp::keyPressed(int key){
 
 }
 
@@ -108,7 +156,8 @@ void ofApp::windowResized(int w, int h){
 
 //--------------------------------------------------------------
 void ofApp::touchDown(int x, int y, int id){
-
+	bPtouch = bTouch;
+	bTouch = true;
 }
 
 //--------------------------------------------------------------
@@ -118,7 +167,8 @@ void ofApp::touchMoved(int x, int y, int id){
 
 //--------------------------------------------------------------
 void ofApp::touchUp(int x, int y, int id){
-	drawConnections = !drawConnections;
+	bPtouch = bTouch;
+	bTouch = false;
 }
 
 //--------------------------------------------------------------

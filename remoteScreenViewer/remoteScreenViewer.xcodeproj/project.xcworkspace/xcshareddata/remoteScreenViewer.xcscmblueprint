@@ -4,35 +4,65 @@
 
   },
   "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
-    "9D7DF0CF1987518FD068E56403FB4AE6D5CA45C2" : 0,
-    "F4CCB893AFADB97238A965FD2F28717F1CAAE613" : 0,
-    "6B5D1DE462D521A98972DF70F1147E20268C546A" : 0,
+    "C1AE88B373AABC75F5BF3D90C8821D8D8447CA59" : 0,
+    "502D0AFC6EA619727BC06B39D7FDF32C2C89BF6B" : 0,
     "2DE9C8846D9375EAACFABA8963120E8E7719BAF5" : 0,
+    "9D7DF0CF1987518FD068E56403FB4AE6D5CA45C2" : 0,
+    "911F9D40E310FCB758EA5DDDC5C456407FB28AC8" : 0,
+    "F4CCB893AFADB97238A965FD2F28717F1CAAE613" : 0,
+    "2D0CFF599BAA58060E7C94A3DA240C286FDA626D" : 0,
+    "6B5D1DE462D521A98972DF70F1147E20268C546A" : 0,
+    "97FDCF03A971289FFED99A88138A5909EA5F5D0C" : 0,
     "AECFBD561E27AA75142CC3760E6EF1774F14CD24" : 0,
-    "C1AE88B373AABC75F5BF3D90C8821D8D8447CA59" : 0
+    "C8B8E0396C2933B77303BEC9CDC120299A2B258D" : 0
   },
-  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "9767CE30-3730-48E4-B798-233131ED09A2",
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "3D7D6F88-655C-4AF6-837F-25C117417603",
   "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
-    "9D7DF0CF1987518FD068E56403FB4AE6D5CA45C2" : "remoteScreens\/",
-    "F4CCB893AFADB97238A965FD2F28717F1CAAE613" : "..\/addons\/ofxSyphon",
-    "6B5D1DE462D521A98972DF70F1147E20268C546A" : "..\/addons\/ofxTween",
+    "C1AE88B373AABC75F5BF3D90C8821D8D8447CA59" : "..\/addons\/ofxRectangleUtils",
+    "502D0AFC6EA619727BC06B39D7FDF32C2C89BF6B" : "..\/addons\/ofxImageSequenceRecorder",
     "2DE9C8846D9375EAACFABA8963120E8E7719BAF5" : "..",
+    "9D7DF0CF1987518FD068E56403FB4AE6D5CA45C2" : "remoteScreens\/",
+    "911F9D40E310FCB758EA5DDDC5C456407FB28AC8" : "..\/addons\/ofxImageSequence",
+    "F4CCB893AFADB97238A965FD2F28717F1CAAE613" : "..\/addons\/ofxSyphon",
+    "2D0CFF599BAA58060E7C94A3DA240C286FDA626D" : "..\/addons\/ofxTiming",
+    "6B5D1DE462D521A98972DF70F1147E20268C546A" : "..\/addons\/ofxTween",
+    "97FDCF03A971289FFED99A88138A5909EA5F5D0C" : "..\/addons\/ofxISF",
     "AECFBD561E27AA75142CC3760E6EF1774F14CD24" : "..\/addons\/ofxIpVideoGrabber",
-    "C1AE88B373AABC75F5BF3D90C8821D8D8447CA59" : "..\/addons\/ofxRectangleUtils"
+    "C8B8E0396C2933B77303BEC9CDC120299A2B258D" : "..\/addons\/ofxOSCSync"
   },
   "DVTSourceControlWorkspaceBlueprintNameKey" : "remoteScreenViewer",
   "DVTSourceControlWorkspaceBlueprintVersion" : 204,
   "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "remoteScreenViewer\/remoteScreenViewer.xcodeproj",
   "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
     {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/kylemcdonald\/ofxTiming.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "2D0CFF599BAA58060E7C94A3DA240C286FDA626D"
+    },
+    {
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/openframeworks\/openFrameworks.git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "2DE9C8846D9375EAACFABA8963120E8E7719BAF5"
     },
     {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/atduskgreg\/ofxImageSequenceRecorder.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "502D0AFC6EA619727BC06B39D7FDF32C2C89BF6B"
+    },
+    {
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/arturoc\/ofxTween.git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "6B5D1DE462D521A98972DF70F1147E20268C546A"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/cwhitney\/ofxImageSequence",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "911F9D40E310FCB758EA5DDDC5C456407FB28AC8"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/satoruhiga\/ofxISF.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "97FDCF03A971289FFED99A88138A5909EA5F5D0C"
     },
     {
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/danthemellowman\/remoteScreens.git",
@@ -48,6 +78,11 @@
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/armadillu\/ofxRectangleUtils.git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "C1AE88B373AABC75F5BF3D90C8821D8D8447CA59"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/danthemellowman\/ofxOSCSync.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "C8B8E0396C2933B77303BEC9CDC120299A2B258D"
     },
     {
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/astellato\/ofxSyphon.git",

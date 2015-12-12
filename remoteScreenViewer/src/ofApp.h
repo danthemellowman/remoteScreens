@@ -31,8 +31,14 @@
 #include "ofxGui.h"
 #include "ofxTween.h"
 #include "IPVideoGrabber.h"
-
-class ColoredRectangle : public ofRectangle{
+#include "ofxXmlSettings.h"
+#include "ofxOsc.h"
+#include "ofxImageSequence.h"
+#include "ofxImageSequenceRecorder.h"
+#include "ofxSyphon.h"
+#include "ofxTiming.h"
+#include "ofxISF.h"
+class ColoredRectangle : public ofxRectangle{
 public:
     ofRectangle rect;
     ofRectangle targetRect;
@@ -45,6 +51,11 @@ public:
     bool bExpanded;
     ofColor color;
     string uuid;
+    string recordingPath;
+    float startTime;
+    float lastActive;
+    int frameNum;
+    bool bRecord;
 };
 
 class IPCameraDef
@@ -97,42 +108,63 @@ public:
     void setup();
     void update();
     void draw();
-
-	void keyPressed(int key);
-	void keyReleased(int key){};
+    void exit();
+    
+    void keyPressed(int key);
+    void keyReleased(int key){};
     void mouseMoved(int x, int y );
     void mouseDragged(int x, int y, int button);
     void mousePressed(int x, int y, int button);
     void mouseReleased(int x, int y, int button);
-
-	void reCreateRects();
-	void packAll(float padding);
+    
+    void reCreateRects();
+    void packAll(float padding);
     
     IPCameraDef& getNextCamera();
     void newCamera(string name, string ip);
     void loadCameras();
     void videoResized(const void* sender, ofResizeEventArgs& arg);
     std::vector<std::shared_ptr<Video::IPVideoGrabber>> grabbers;
+    std::map<string, std::shared_ptr<Video::IPVideoGrabber> > grabbermap;
     std::vector<IPCameraDef> ipcams; // a list of IPCameras
     int nextCamera;
     
     
     bool bTogglerectangles;
-  
-
-
-	vector<ofRectanglePacker*> packer;
-    map<string, ColoredRectangle*> targetRectMap;
-    map<string, ColoredRectangle*> rectMap;
-	vector<ofFbo> fbos;
-	vector<ColoredRectangle*> rectangles;
-    vector<ofRectangle*> rects;
-    vector<ColoredRectangle*> targetRects;
-	vector< vector<ColoredRectangle*> > targetrectsPerFbo;
-    vector< vector<ColoredRectangle*> > rectsPerFbo;
+    
+    
+    ofxOscReceiver receiver;
+    ofxOscSender sender;
+    
+    ofFbo fbo;
+    ofFbo fboPing, fboPong;
+    ofBufferObject pixelBufferBack, pixelBufferFront;
+    ofBoxPrimitive box;
+    ofPixels pixels;
+    bool record;
+    
 
     
+    
+    map<string, FadeTimer> delays;
+    map<string, Hysteresis> hyster;
+    
+    vector<ofRectanglePacker*> packer;
+    map<string, ColoredRectangle*> targetRectMap;
+    map<string, ColoredRectangle*> rectMap;
+    vector<ofFbo> fbos;
+    vector<ColoredRectangle*> rectangles;
+    vector<ofRectangle*> rects;
+    vector<ColoredRectangle*> targetRects;
+    vector< vector<ColoredRectangle*> > targetrectsPerFbo;
+    vector< vector<ColoredRectangle*> > rectsPerFbo;
+    
+    vector<string> recordingPaths;
+    map<string, ofxImageSequence*> recordings;
+    map<string, ofxImageSequenceRecorder*> recorder;
     vector<ofxTween> tweeners;
+    
+    ofxImageSequence debugSeq;
     
     
     ofxEasingBounce easeBounce;
@@ -150,10 +182,13 @@ public:
     float clamp;
     ofxTween::ofxEasingType easingType;
     string easestring;
-
+    
+    float smoothScale;
+    FadeTimer foo;
     
     
-	int padding;
+    ofShader motionBlur;
+    ofxSyphonServer server;
     
     ofxPanel panel;
     ofParameterGroup lerps;
@@ -161,12 +196,15 @@ public:
     ofParameter<float> targetLerp;
     ofParameter<float> scaleOutputMin, scaleOutputMax;
     ofParameter<bool> debugView;
+    ofParameter<float> padding;
+    ofParameter<float> aspectRatio;
+    ofParameter<float> pBlur;
     int numExpanded;
     int numRects;
     float fboWidth;
     float fboHeight;
     float textureHeight;
     float textureWidth;
+    float maxw;
     
-    ofFbo fbo;
 };

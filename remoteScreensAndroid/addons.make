@@ -7,3 +7,4 @@ ofxSSLManager
 ofxTaskQueue
 ofxNetworkUtils
 ofxOsc
+ofxTiming
